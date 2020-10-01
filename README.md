@@ -1,0 +1,2 @@
+# ubuntu_setup_docker_role
+AnsibleでUbuntuのDocker環境を構築するためのロール
