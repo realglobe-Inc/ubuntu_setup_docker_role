@@ -1,0 +1,53 @@
+---
+- name: install apt-get dependencies
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg-agent
+      - software-properties-common
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: check docker gpg key
+  shell: apt-key fingerprint 0EBFCD88 | grep CD88
+  register: docker_gpg
+  ignore_errors: yes
+  changed_when: no
+
+- name: add official GPG key
+  shell: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+  when: docker_gpg is failed
+
+- name: define lsb_release -cs
+  shell: lsb_release -cs
+  ignore_errors: True
+  register: lsb_release
+
+- name: set up the stable repository
+  shell: add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ lsb_release.stdout }} stable"
+
+- name: install docker-ce
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+    state: present
+    update_cache: yes
+  notify:
+    - start docker
+
+- name: check user belongs to docker group
+  shell: groups {{ ansible_ssh_user }} | grep docker
+  register: docker_group
+  ignore_errors: yes
+  changed_when: no
+
+- name: add user to docker group
+  shell: gpasswd -a {{ ansible_ssh_user }} docker
+  when: docker_group is failed
+  notify:
+    - restart docker
